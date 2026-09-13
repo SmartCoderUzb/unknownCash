@@ -61,7 +61,7 @@ class Settings(BaseSettings):
     WEBHOOK_HOST: str | None = Field(default=None)
     WEBHOOK_PATH: str | None = Field(default=None)
     WEBHOOK_URL: str | None = Field(default=None)
-    WEBAPP_HOST: str = Field(default="0.0.0.0")
+    WEBAPP_HOST: str = Field(default="127.0.0.1")
     WEBAPP_PORT: int | None = Field(default=None)
 
     @field_validator("SUPER_ADMINS", mode="before")
