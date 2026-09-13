@@ -15,7 +15,7 @@ logger = logging.getLogger("AdminBroadcast")
 broadcast_router = Router()
 
 
-@broadcast_router.message(F.text == "💌 Xabarnoma")
+@broadcast_router.message(F.text.in_(["✉️ Xabar yuborish", "💌 Xabarnoma"]))
 async def on_broadcast_menu(message: Message):
     if not settings.is_admin(message.from_user.id):
         return

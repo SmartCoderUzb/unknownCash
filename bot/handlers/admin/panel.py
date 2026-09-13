@@ -18,14 +18,16 @@ panel_router = Router()
 async def on_admin_panel_command(
     message: Message,
     session: AsyncSession,
-    state: FSMContext
+    state: FSMContext,
+    bot: Bot
 ):
     if not settings.is_admin(message.from_user.id):
         return
 
     await state.clear()
     panel_kb = await get_admin_panel_menu(session)
-    await message.answer("<b>Boshqaruv panelidasiz.</b>", reply_markup=panel_kb)
+    bot_info = await bot.get_me()
+    await message.answer(f"<b>{bot_info.first_name} | Admin Panel 🔽 Kerakli buyruqni tanlang:</b>", reply_markup=panel_kb)
 
 
 @panel_router.callback_query(F.data == "yopish")

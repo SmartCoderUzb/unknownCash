@@ -97,17 +97,19 @@ def get_close_keyboard() -> InlineKeyboardMarkup:
 def get_admin_settings_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📑 Hozirgi holat", callback_data="holat")],
+            [InlineKeyboardButton(text="📄 Hozirgi holat", callback_data="holat")],
             [
-                InlineKeyboardButton(text="👥️️ Taklif narxi", callback_data="taklif"),
+                InlineKeyboardButton(text="👥 Taklif narxi", callback_data="taklif"),
                 InlineKeyboardButton(text="💶 Valyuta", callback_data="valyuta")
             ],
             [
-                InlineKeyboardButton(text="💸Minimal uc yechish narxi", callback_data="narx"),
-                InlineKeyboardButton(text="🖼 Taklif rasmi", callback_data="taklif_rasm")
+                InlineKeyboardButton(text="💸 Minimal yechish narxi", callback_data="narx")
             ],
             [
-                InlineKeyboardButton(text="📎 Admin useri", callback_data="admin_user_setting"),
+                InlineKeyboardButton(text="🖼 Rasm o'rnatish", callback_data="taklif_rasm"),
+                InlineKeyboardButton(text="📎 Admin useri", callback_data="admin_user_setting")
+            ],
+            [
                 InlineKeyboardButton(text="Yopish", callback_data="yopish")
             ]
         ]

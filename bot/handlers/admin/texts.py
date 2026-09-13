@@ -1,14 +1,57 @@
 from aiogram import Router, F
-from aiogram.types import Message
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.core.config import settings
 from bot.database import crud
 from bot.states.admin_states import AdminStates
-from bot.keyboards.reply import get_boshqarish_keyboard, get_admin_panel_menu
+from bot.keyboards.reply import get_boshqarish_keyboard, get_admin_panel_menu, get_cancel_keyboard
 
 texts_router = Router()
+
+
+# ==============================================================================
+# DIZAYN MENYUSI
+# ==============================================================================
+
+@texts_router.message(F.text == "🎨 Dizayn")
+async def on_design_menu(message: Message):
+    if not settings.is_admin(message.from_user.id):
+        return
+
+    markup = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🎛 Tugmalar", callback_data="design_buttons")],
+            [InlineKeyboardButton(text="📃 Matnlar", callback_data="design_texts")],
+            [InlineKeyboardButton(text="Yopish", callback_data="yopish")]
+        ]
+    )
+    await message.answer("<b>🎨 Dizayn va matnlarni sozlash bo'limi:</b>\n\nQuyidagilardan birini tanlang:", reply_markup=markup)
+
+
+@texts_router.callback_query(F.data == "design_buttons")
+async def on_design_buttons_callback(callback: CallbackQuery, state: FSMContext):
+    await callback.message.delete()
+    codes = ", ".join([f"<code>{k}</code>" for k in crud.DEFAULT_BUTTONS.keys()])
+    await callback.message.answer(
+        f"<b>Tugma kodini kiriting:</b>\n\n"
+        f"Mavjud kodlar:\n{codes}",
+        reply_markup=get_cancel_keyboard()
+    )
+    await state.set_state(AdminStates.waiting_for_button_code)
+
+
+@texts_router.callback_query(F.data == "design_texts")
+async def on_design_texts_callback(callback: CallbackQuery, state: FSMContext):
+    await callback.message.delete()
+    codes = ", ".join([f"<code>{k}</code>" for k in crud.DEFAULT_TEXTS.keys()])
+    await callback.message.answer(
+        f"<b>Matn kodini kiriting:</b>\n\n"
+        f"Mavjud kodlar:\n{codes}",
+        reply_markup=get_cancel_keyboard()
+    )
+    await state.set_state(AdminStates.waiting_for_text_code)
 
 
 # ==============================================================================
@@ -24,7 +67,7 @@ async def on_buttons_editor_prompt(message: Message, state: FSMContext):
     await message.answer(
         f"<b>Tugma kodini kiriting:</b>\n\n"
         f"Mavjud kodlar:\n{codes}",
-        reply_markup=get_boshqarish_keyboard()
+        reply_markup=get_cancel_keyboard()
     )
     await state.set_state(AdminStates.waiting_for_button_code)
 
@@ -35,7 +78,7 @@ async def process_button_code(
     session: AsyncSession,
     state: FSMContext
 ):
-    if message.text == "🗄 Boshqarish":
+    if message.text in ["🗄 Boshqarish", "Bekor qilish", "bekor qilish", "🚫 Bekor qilish"]:
         await state.clear()
         panel_kb = await get_admin_panel_menu(session)
         await message.answer("<b>Boshqaruv panelidasiz.</b>", reply_markup=panel_kb)
@@ -52,7 +95,8 @@ async def process_button_code(
     await message.answer(
         f"<pre>{code}</pre> <b>qabul qilindi.</b>\n\n"
         f"Hozirgi qiymat: <b>{current_val}</b>\n\n"
-        f"<i>Ushbu tugma uchun yangi qiymatni kiriting:</i>"
+        f"<i>Ushbu tugma uchun yangi qiymatni kiriting:</i>",
+        reply_markup=get_cancel_keyboard()
     )
 
 
@@ -62,7 +106,7 @@ async def process_button_value(
     session: AsyncSession,
     state: FSMContext
 ):
-    if message.text == "🗄 Boshqarish":
+    if message.text in ["🗄 Boshqarish", "Bekor qilish", "bekor qilish", "🚫 Bekor qilish"]:
         await state.clear()
         panel_kb = await get_admin_panel_menu(session)
         await message.answer("<b>Boshqaruv panelidasiz.</b>", reply_markup=panel_kb)
@@ -91,7 +135,7 @@ async def on_texts_editor_prompt(message: Message, state: FSMContext):
     await message.answer(
         f"<b>Matn kodini kiriting:</b>\n\n"
         f"Mavjud kodlar:\n{codes}",
-        reply_markup=get_boshqarish_keyboard()
+        reply_markup=get_cancel_keyboard()
     )
     await state.set_state(AdminStates.waiting_for_text_code)
 
@@ -102,7 +146,7 @@ async def process_text_code(
     session: AsyncSession,
     state: FSMContext
 ):
-    if message.text == "🗄 Boshqarish":
+    if message.text in ["🗄 Boshqarish", "Bekor qilish", "bekor qilish", "🚫 Bekor qilish"]:
         await state.clear()
         panel_kb = await get_admin_panel_menu(session)
         await message.answer("<b>Boshqaruv panelidasiz.</b>", reply_markup=panel_kb)
@@ -119,7 +163,8 @@ async def process_text_code(
     await message.answer(
         f"<pre>{code}</pre> <b>qabul qilindi.</b>\n\n"
         f"Hozirgi qiymat:\n{current_val}\n\n"
-        f"<i>Ushbu matn uchun yangi qiymatni kiriting:</i>"
+        f"<i>Ushbu matn uchun yangi qiymatni kiriting:</i>",
+        reply_markup=get_cancel_keyboard()
     )
 
 
@@ -129,7 +174,7 @@ async def process_text_value(
     session: AsyncSession,
     state: FSMContext
 ):
-    if message.text == "🗄 Boshqarish":
+    if message.text in ["🗄 Boshqarish", "Bekor qilish", "bekor qilish", "🚫 Bekor qilish"]:
         await state.clear()
         panel_kb = await get_admin_panel_menu(session)
         await message.answer("<b>Boshqaruv panelidasiz.</b>", reply_markup=panel_kb)

@@ -26,12 +26,10 @@ async def get_main_menu(session: AsyncSession, is_admin: bool = False) -> ReplyK
 async def get_admin_panel_menu(session: AsyncSession) -> ReplyKeyboardMarkup:
     back = await TextService.get_button(session, "back")
     keyboard = [
-        [KeyboardButton(text="⚙ Asosiy sozlamalar")],
-        [KeyboardButton(text="📢 Kanallar"), KeyboardButton(text="📊 Statistika")],
-        [KeyboardButton(text="🔎 Foydalanuvchini boshqarish")],
-        [KeyboardButton(text="🎛 Tugmalar"), KeyboardButton(text="📃 Matnlar")],
-        [KeyboardButton(text="💳 To'lov tizimi")],
-        [KeyboardButton(text="💌 Xabarnoma"), KeyboardButton(text=back)],
+        [KeyboardButton(text="📊 Statistika"), KeyboardButton(text="💳 To'lov tizimi")],
+        [KeyboardButton(text="📢 Kanallar"), KeyboardButton(text="✉️ Xabar yuborish")],
+        [KeyboardButton(text="🔎 Foydalanuvchini boshqarish"), KeyboardButton(text="🎨 Dizayn")],
+        [KeyboardButton(text="⚙️ Asosiy sozlamalar"), KeyboardButton(text=back)],
     ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
@@ -43,6 +41,10 @@ async def get_back_keyboard(session: AsyncSession) -> ReplyKeyboardMarkup:
 
 def get_boshqarish_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="🗄 Boshqarish")]], resize_keyboard=True)
+
+
+def get_cancel_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="Bekor qilish")]], resize_keyboard=True)
 
 
 def get_contact_keyboard(btn_text: str = "☎️ Kontaktni yuborish") -> ReplyKeyboardMarkup:
