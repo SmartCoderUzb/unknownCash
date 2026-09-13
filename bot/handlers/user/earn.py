@@ -32,6 +32,7 @@ async def on_earn_command(
     all_settings = await crud.get_all_settings(session)
     currency = all_settings.get("valyuta", "uc")
     taklif_price = all_settings.get("taklif", "5")
+    earn_photo = all_settings.get("earn_photo", EARN_PHOTO_URL)
     reflink = f"https://t.me/{bot_info.username}?start={db_user.id}"
 
     earn_text = await TextService.get_text(
@@ -52,7 +53,7 @@ async def on_earn_command(
 
     try:
         await message.answer_photo(
-            photo=EARN_PHOTO_URL,
+            photo=earn_photo,
             caption=earn_text,
             reply_markup=markup
         )

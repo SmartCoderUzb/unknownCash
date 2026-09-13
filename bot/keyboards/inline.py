@@ -102,11 +102,24 @@ def get_admin_settings_keyboard() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="👥️️ Taklif narxi", callback_data="taklif"),
                 InlineKeyboardButton(text="💶 Valyuta", callback_data="valyuta")
             ],
-            [InlineKeyboardButton(text="💸Minimal uc yechish narxi", callback_data="narx")],
+            [
+                InlineKeyboardButton(text="💸Minimal uc yechish narxi", callback_data="narx"),
+                InlineKeyboardButton(text="🖼 Taklif rasmi", callback_data="taklif_rasm")
+            ],
             [
                 InlineKeyboardButton(text="📎 Admin useri", callback_data="admin_user_setting"),
                 InlineKeyboardButton(text="Yopish", callback_data="yopish")
             ]
+        ]
+    )
+
+
+def get_earn_photo_settings_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🆕 Yangi rasm o'rnatish", callback_data="set_earn_photo")],
+            [InlineKeyboardButton(text="🔄 Standart rasmga qaytarish", callback_data="reset_earn_photo")],
+            [InlineKeyboardButton(text="◀️ Orqaga", callback_data="asosiy")]
         ]
     )
 

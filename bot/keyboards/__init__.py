@@ -22,7 +22,8 @@ from .inline import (
     get_additional_channels_keyboard,
     get_payment_systems_admin_keyboard,
     get_broadcast_type_keyboard,
-    get_user_manage_keyboard
+    get_user_manage_keyboard,
+    get_earn_photo_settings_keyboard
 )
 
 __all__ = [
@@ -47,5 +48,6 @@ __all__ = [
     "get_additional_channels_keyboard",
     "get_payment_systems_admin_keyboard",
     "get_broadcast_type_keyboard",
-    "get_user_manage_keyboard"
+    "get_user_manage_keyboard",
+    "get_earn_photo_settings_keyboard"
 ]

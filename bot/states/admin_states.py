@@ -20,3 +20,4 @@ class AdminStates(StatesGroup):
     waiting_for_broadcast_forward = State()
     waiting_for_direct_user_id = State()
     waiting_for_direct_message = State()
+    waiting_for_earn_photo = State()

@@ -13,7 +13,8 @@ DEFAULT_SETTINGS = {
     "valyuta": "uc",
     "narx": "210",
     "admin_user": "Kiritilmagan",
-    "vazifa": "Kiritilmagan"
+    "vazifa": "Kiritilmagan",
+    "earn_photo": "https://t.me/BOT_UCHUN_RASMLAR/12"
 }
 
 DEFAULT_BUTTONS = {
