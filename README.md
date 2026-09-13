@@ -1,6 +1,6 @@
-# UC Bot (Python + PostgreSQL + Redis)
+# UnknownCash (Python + PostgreSQL + Redis)
 
-Ushbu loyiha avval PHP tilida yozilgan (`UcBot.php`) PUBG Mobile UC va o'yin valyutalarini referal hamda vazifalar orqali ishlash/yechish botining **Python 3.12+ (Aiogram 3.x, SQLAlchemy 2.0 Async, Redis FSM, PostgreSQL Schema Isolation)** asosidagi to'liq qayta yozilgan mikroxizmat sub-bot loyihasidir.
+Ushbu loyiha avval PHP tilida yozilgan (`UnknownCash.php` / `UcBot.php`) PUBG Mobile Unknown Cash (UC) va o'yin valyutalarini referal hamda vazifalar orqali ishlash/yechish botining **Python 3.12+ (Aiogram 3.x, SQLAlchemy 2.0 Async, Redis FSM, PostgreSQL Schema Isolation)** asosidagi to'liq qayta yozilgan mikroxizmat sub-bot loyihasidir.
 
 ---
 

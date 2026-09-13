@@ -90,9 +90,9 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def compute_defaults(self) -> "Settings":
-        # Schema isolation fallback (masalan: uc_bot_1)
+        # Schema isolation fallback (masalan: unknowncash_bot_1)
         if not self.DB_SCHEMA:
-            self.DB_SCHEMA = f"uc_bot_{self.BOT_ID}"
+            self.DB_SCHEMA = f"unknowncash_bot_{self.BOT_ID}"
 
         # Webhook path fallback
         if not self.WEBHOOK_PATH:
