@@ -28,7 +28,7 @@ async def setup_commands():
     """Telegram bot buyruqlar menyusini sozlaydi."""
     commands = [
         BotCommand(command="start", description="Botni ishga tushirish / Bosh menyu"),
-        BotCommand(command="panel", description="Admin paneli"),
+        BotCommand(command="admin", description="Admin paneli"),
     ]
     try:
         await bot.set_my_commands(commands, scope=BotCommandScopeDefault())

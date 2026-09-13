@@ -1,5 +1,4 @@
 import os
-import psutil
 from aiogram import Router, F, Bot
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
@@ -44,9 +43,9 @@ async def on_statistics_command(
 
     total_users = await crud.get_users_count(session)
     try:
-        load = os.getloadavg()[0]
+        load = round(os.getloadavg()[0], 2)
     except Exception:
-        load = psutil.cpu_percent()
+        load = "0.0"
 
     stat_text = (
         f"<b>💡 O'rtacha yuklanish:</b> <code>{load}</code>\n\n"

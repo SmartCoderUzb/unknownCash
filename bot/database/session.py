@@ -15,7 +15,7 @@ schema = settings.DB_SCHEMA
 
 connect_args = {
     "server_settings": {
-        "search_path": f'"{schema}"'
+        "search_path": f'"{schema}", public'
     }
 } if (is_pg and schema) else {}
 
