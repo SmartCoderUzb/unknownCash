@@ -36,6 +36,7 @@ class UserTrackerMiddleware(BaseMiddleware):
         )
 
         data["db_user"] = user
+        data["is_new_user"] = is_new
 
         # 2. Ban tekshiruvi: agar bloklangan bo'lsa va admin bo'lmasa, jarayon to'xtatiladi
         is_admin = settings.is_admin(event_user.id)

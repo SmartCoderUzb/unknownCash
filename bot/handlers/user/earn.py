@@ -16,7 +16,7 @@ earn_router = Router()
 EARN_PHOTO_URL = "https://t.me/BOT_UCHUN_RASMLAR/12"
 
 
-@earn_router.message(F.text.in_(["🎁 Uc ishlash", "Uc ishlash"]))
+@earn_router.message(F.text.in_(["🎁 UC ishlash", "UC ishlash", "🎁 Uc ishlash", "Uc ishlash", "/earn"]))
 async def on_earn_command(
     message: Message,
     session: AsyncSession,

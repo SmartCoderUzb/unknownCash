@@ -44,13 +44,26 @@ async def on_statistics_command(
         return
 
     total_users = await crud.get_users_count(session)
+    pending_orders = await crud.get_pending_orders_count(session)
+    pending_withdrawals = await crud.get_pending_withdrawals_count(session)
+    tariffs = await crud.get_active_tariffs(session)
+    channels = await crud.get_mandatory_channels(session)
+    settings_data = await crud.get_all_settings(session)
+    currency = settings_data.get("valyuta", "UC")
+
     try:
         load = round(os.getloadavg()[0], 2)
     except Exception:
         load = "0.0"
 
     stat_text = (
-        f"<b>💡 O'rtacha yuklanish:</b> <code>{load}</code>\n\n"
-        f"👥 <b>Foydalanuvchilar: {total_users} ta</b>"
+        f"📊 <b>Bot Statistikasi:</b>\n\n"
+        f"👥 <b>Jami foydalanuvchilar:</b> {total_users} ta\n"
+        f"🛒 <b>Kutilayotgan UC xaridlar:</b> {pending_orders} ta\n"
+        f"💸 <b>Kutilayotgan UC yechishlar:</b> {pending_withdrawals} ta\n"
+        f"💎 <b>Faol UC tariflari:</b> {len(tariffs)} ta\n"
+        f"📢 <b>Majburiy kanallar:</b> {len(channels)} ta\n"
+        f"💶 <b>Asosiy valyuta:</b> {currency}\n\n"
+        f"💡 <b>Server yuklanishi (Load Avg):</b> <code>{load}</code>"
     )
     await message.answer(text=stat_text, reply_markup=get_close_keyboard())

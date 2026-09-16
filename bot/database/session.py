@@ -63,3 +63,10 @@ async def init_db():
             logger.info("SQLite bazasi muvaffaqiyatli initsializatsiya qilindi.")
         else:
             raise e
+
+
+async def close_db():
+    global engine
+    if engine:
+        await engine.dispose()
+

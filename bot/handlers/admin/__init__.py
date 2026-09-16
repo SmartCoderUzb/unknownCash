@@ -7,6 +7,8 @@ from .payments import payments_router
 from .texts import texts_router
 from .broadcast import broadcast_router
 from .withdrawals import withdrawals_admin_router
+from .tariffs import tariffs_admin_router
+from .orders import orders_admin_router
 
 admin_router = Router()
 admin_router.include_router(panel_router)
@@ -17,5 +19,7 @@ admin_router.include_router(payments_router)
 admin_router.include_router(texts_router)
 admin_router.include_router(broadcast_router)
 admin_router.include_router(withdrawals_admin_router)
+admin_router.include_router(tariffs_admin_router)
+admin_router.include_router(orders_admin_router)
 
 __all__ = ["admin_router"]

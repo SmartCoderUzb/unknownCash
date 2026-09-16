@@ -24,7 +24,15 @@ from .inline import (
     get_payment_systems_admin_keyboard,
     get_broadcast_type_keyboard,
     get_user_manage_keyboard,
-    get_earn_photo_settings_keyboard
+    get_earn_photo_settings_keyboard,
+    get_cabinet_inline_keyboard,
+    get_buy_withdraw_choice_keyboard,
+    get_tariffs_keyboard,
+    get_use_saved_pubg_id_keyboard,
+    get_buy_confirm_keyboard,
+    get_admin_order_request_keyboard,
+    get_admin_tariffs_keyboard,
+    get_support_inline_keyboard
 )
 
 __all__ = [
@@ -38,6 +46,7 @@ __all__ = [
     "get_continue_keyboard",
     "get_share_keyboard",
     "get_cabinet_keyboard",
+    "get_cabinet_inline_keyboard",
     "get_payment_systems_keyboard",
     "get_withdrawal_confirm_keyboard",
     "get_admin_withdrawal_request_keyboard",
@@ -51,5 +60,12 @@ __all__ = [
     "get_payment_systems_admin_keyboard",
     "get_broadcast_type_keyboard",
     "get_user_manage_keyboard",
-    "get_earn_photo_settings_keyboard"
+    "get_earn_photo_settings_keyboard",
+    "get_buy_withdraw_choice_keyboard",
+    "get_tariffs_keyboard",
+    "get_use_saved_pubg_id_keyboard",
+    "get_buy_confirm_keyboard",
+    "get_admin_order_request_keyboard",
+    "get_admin_tariffs_keyboard",
+    "get_support_inline_keyboard"
 ]

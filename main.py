@@ -7,8 +7,8 @@ from aiogram.types import BotCommand, BotCommandScopeDefault
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
 from bot.core.config import settings
-from bot.core.loader import bot, dp, storage
-from bot.database.session import init_db, async_session, engine
+from bot.core.loader import bot, dp, storage, check_storage
+from bot.database.session import init_db, async_session, close_db
 from bot.database import crud
 from bot.middlewares import DbSessionMiddleware, UserTrackerMiddleware
 from bot.handlers import common_router, admin_router, user_router
@@ -28,7 +28,12 @@ async def setup_commands():
     """Telegram bot buyruqlar menyusini sozlaydi."""
     commands = [
         BotCommand(command="start", description="Botni ishga tushirish / Bosh menyu"),
-        BotCommand(command="admin", description="Admin paneli"),
+        BotCommand(command="cabinet", description="👤 Hisob / PUBG ID"),
+        BotCommand(command="earn", description="🎁 UC ishlash (Referal)"),
+        BotCommand(command="buy", description="🛒 UC sotib olish"),
+        BotCommand(command="withdraw", description="💰 UC yechib olish"),
+        BotCommand(command="help", description="💬 Yordam va Qo'llanma"),
+        BotCommand(command="admin", description="🗄 Admin paneli"),
     ]
     try:
         await bot.set_my_commands(commands, scope=BotCommandScopeDefault())
@@ -46,6 +51,7 @@ async def main():
 
     # 2. PostgreSQL Schema Isolation va jadvallarni initsializatsiya qilish
     await init_db()
+    await check_storage()
     async with async_session() as session:
         await crud.init_default_settings(session)
         # Asosiy adminni bazada admin sifatida belgilash
@@ -121,7 +127,7 @@ async def main():
     if storage:
         await storage.close()
     await bot.session.close()
-    await engine.dispose()
+    await close_db()
     logger.info("Bot muvaffaqiyatli to'xtatildi.")
 
 

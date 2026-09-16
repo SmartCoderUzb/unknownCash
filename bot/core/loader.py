@@ -39,4 +39,22 @@ storage = get_storage()
 # 3. Dispatcher initsializatsiyasi
 dp = Dispatcher(storage=storage)
 
-__all__ = ["bot", "dp", "storage", "settings", "get_storage"]
+
+async def check_storage():
+    """Redis ulanishini tekshiradi, agar offline bo'lsa xavfsiz MemoryStorage ga o'tadi."""
+    global storage, dp
+    if isinstance(storage, RedisStorage):
+        try:
+            import asyncio
+            from redis.asyncio import Redis
+            r = Redis.from_url(settings.get_redis_url())
+            await asyncio.wait_for(r.ping(), timeout=1.0)
+            await r.aclose()
+            logger.info(f"Redis muvaffaqiyatli ulandi (schema: {settings.DB_SCHEMA}).")
+        except Exception as e:
+            logger.warning(f"Redis ulanishida ogohlantirish ({e}). MemoryStorage ga o'tilmoqda.")
+            storage = MemoryStorage()
+            dp.fsm.storage = storage
+
+
+__all__ = ["bot", "dp", "storage", "settings", "get_storage", "check_storage"]

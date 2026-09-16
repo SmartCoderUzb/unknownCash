@@ -4,6 +4,8 @@ from .channel import MandatoryChannel
 from .payment import PaymentSystem
 from .withdrawal import Withdrawal
 from .text import BotText
+from .tariff import UcTariff
+from .order import UcOrder
 
 __all__ = [
     "User",
@@ -11,5 +13,7 @@ __all__ = [
     "MandatoryChannel",
     "PaymentSystem",
     "Withdrawal",
-    "BotText"
+    "BotText",
+    "UcTariff",
+    "UcOrder"
 ]

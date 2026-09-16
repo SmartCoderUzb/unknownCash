@@ -9,11 +9,11 @@ from bot.database import crud
 from bot.database.models import User
 from bot.states.user_states import UserStates
 from bot.services.text_manager import TextService
-from bot.keyboards.reply import get_main_menu, get_back_keyboard, get_amount_keyboard
+from bot.keyboards.reply import get_main_menu, get_back_keyboard, get_amount_keyboard, get_cancel_keyboard
 from bot.keyboards.inline import (
-    get_payment_systems_keyboard,
     get_withdrawal_confirm_keyboard,
-    get_admin_withdrawal_request_keyboard
+    get_admin_withdrawal_request_keyboard,
+    get_use_saved_pubg_id_keyboard
 )
 from bot.handlers.user.start import check_user_access
 
@@ -28,37 +28,58 @@ async def start_withdrawal_flow(
     bot: Bot,
     db_user: User
 ):
-    """To'lov tizimlarini ko'rsatish va yechish jarayonini boshlash."""
+    """UC yechish jarayonini boshlash."""
+    await state.clear()
     can_proceed = await check_user_access(target, session, state, bot, db_user)
     if not can_proceed:
         return
 
-    payment_systems = await crud.get_active_payment_systems(session)
-    if not payment_systems:
-        msg_text = "<b>To'lov tizimlari topilmadi!</b>"
+    all_settings = await crud.get_all_settings(session)
+    narx = float(all_settings.get("narx", "60"))
+    currency = all_settings.get("valyuta", "UC")
+
+    # Balans tekshiruvi
+    if float(db_user.balance) < narx:
+        min_text = (
+            f"⛔ <b>Hisobingizda mablag' yetarli emas!</b>\n\n"
+            f"• <b>Minimal yechib olish miqdori:</b> {narx} {currency}\n"
+            f"• <b>Sizning balansingiz:</b> {db_user.balance} {currency}\n\n"
+            f"<i>Do'stlaringizni taklif qilib yoki xarid qilib balansingizni to'ldirishingiz mumkin.</i>"
+        )
         if isinstance(target, CallbackQuery):
-            await target.answer("To'lov tizimlari topilmadi!", show_alert=True)
+            await target.answer(f"Minimal yechish: {narx} {currency}. Balansingiz: {db_user.balance} {currency}", show_alert=True)
         else:
-            await target.answer(msg_text)
+            await target.answer(min_text)
         return
 
-    select_text = await TextService.get_text(
-        session=session,
-        key="selectPayType",
-        first=db_user.first_name,
-        last=db_user.last_name,
-        user_id=db_user.id
-    )
-    markup = get_payment_systems_keyboard(payment_systems)
-
-    if isinstance(target, CallbackQuery):
-        await target.message.delete()
-        await target.message.answer(text=select_text, reply_markup=markup)
+    # Foydalanuvchida saqlangan PUBG ID bormi?
+    if db_user.pubg_id:
+        text = (
+            f"💰 <b>UC Yechib Olish:</b>\n\n"
+            f"💎 <b>Mavjud balansingiz:</b> {db_user.balance} {currency}\n"
+            f"🎮 <b>Saqlangan PUBG ID:</b> <code>{db_user.pubg_id}</code>\n\n"
+            f"Ushbu PUBG ID ga yechib olmoqchimisiz?"
+        )
+        markup = get_use_saved_pubg_id_keyboard(db_user.pubg_id)
+        if isinstance(target, CallbackQuery):
+            await target.message.edit_text(text=text, reply_markup=markup)
+        else:
+            await target.answer(text=text, reply_markup=markup)
     else:
-        await target.answer(text=select_text, reply_markup=markup)
+        text = (
+            f"💰 <b>UC Yechib Olish:</b>\n\n"
+            f"💎 <b>Mavjud balansingiz:</b> {db_user.balance} {currency}\n\n"
+            f"🎮 <b>PUBG Mobile Akkaunt ID raqamingizni kiriting:</b>\n<i>(Masalan: 5123456789)</i>"
+        )
+        if isinstance(target, CallbackQuery):
+            await target.message.delete()
+            await target.message.answer(text=text, reply_markup=get_cancel_keyboard())
+        else:
+            await target.answer(text=text, reply_markup=get_cancel_keyboard())
+        await state.set_state(UserStates.withdraw_waiting_for_pubg_id)
 
 
-@withdraw_router.message(F.text.in_(["💰Ucni yechish", "Ucni yechish"]))
+@withdraw_router.message(F.text.in_(["💰 UC yechib olish", "UC yechib olish", "💰Ucni yechish", "Ucni yechish", "UC yechish", "/withdraw"]))
 async def on_withdraw_message(
     message: Message,
     session: AsyncSession,
@@ -69,6 +90,7 @@ async def on_withdraw_message(
     await start_withdrawal_flow(message, session, state, bot, db_user)
 
 
+@withdraw_router.callback_query(F.data == "action_withdraw_uc")
 @withdraw_router.callback_query(F.data == "yechish")
 async def on_withdraw_callback(
     callback: CallbackQuery,
@@ -80,90 +102,96 @@ async def on_withdraw_callback(
     await start_withdrawal_flow(callback, session, state, bot, db_user)
 
 
-@withdraw_router.callback_query(F.data.startswith("pay-"))
-async def on_select_payment_system(
+@withdraw_router.callback_query(F.data.startswith("use_saved_pubg_"))
+async def on_use_saved_pubg_for_withdraw(
     callback: CallbackQuery,
     session: AsyncSession,
     state: FSMContext,
-    bot: Bot,
     db_user: User
 ):
-    wallet_name = callback.data.split("pay-", 1)[1]
-    all_settings = await crud.get_all_settings(session)
-    vazifa = all_settings.get("vazifa", "Kiritilmagan")
-    narx = float(all_settings.get("narx", "210"))
-    currency = all_settings.get("valyuta", "uc")
+    pubg_id = callback.data.split("use_saved_pubg_")[1]
+    await state.update_data(pubg_id=pubg_id)
+    await prompt_for_amount(callback.message, session, state, db_user, is_edit=True)
 
-    # 1. To'lovlar kanali tekshiruvi
-    if vazifa == "Kiritilmagan" or not vazifa:
-        no_channel_text = await TextService.get_text(session, "noChannel")
-        await callback.answer(no_channel_text, show_alert=True)
-        return
 
-    # 2. Minimal yechish miqdori tekshiruvi
-    if float(db_user.balance) < narx:
-        min_text = await TextService.get_text(
-            session=session,
-            key="minimum",
-            balance=db_user.balance,
-            minimum=narx,
-            currency=currency
-        )
-        # HTML teglardan tozalash alert uchun
-        plain_min_text = min_text.replace("<b>", "").replace("</b>", "").replace("<pre>", "").replace("</pre>", "")
-        await callback.answer(plain_min_text, show_alert=True)
-        return
-
-    # 3. Hamyon raqamini so'rash
+@withdraw_router.callback_query(F.data == "enter_new_pubg_id")
+async def on_prompt_new_pubg_withdraw(callback: CallbackQuery, state: FSMContext):
     await callback.message.delete()
-    send_card_text = await TextService.get_text(
-        session=session,
-        key="sendCard",
-        first=db_user.first_name,
-        last=db_user.last_name,
-        user_id=db_user.id
+    await callback.message.answer(
+        "🎮 <b>PUBG Mobile Akkaunt ID raqamingizni kiriting:</b>\n<i>(Masalan: 5123456789)</i>",
+        reply_markup=get_cancel_keyboard()
     )
-    back_kb = await get_back_keyboard(session)
-    await callback.message.answer(text=send_card_text, reply_markup=back_kb)
-
-    await state.set_state(UserStates.waiting_for_wallet)
-    await state.update_data(wallet_name=wallet_name)
+    await state.set_state(UserStates.withdraw_waiting_for_pubg_id)
 
 
-@withdraw_router.message(UserStates.waiting_for_wallet)
-async def on_wallet_entered(
+@withdraw_router.message(UserStates.withdraw_waiting_for_pubg_id)
+async def process_withdraw_pubg_id(
     message: Message,
     session: AsyncSession,
     state: FSMContext,
     db_user: User
 ):
-    wallet_number = message.text.strip()
-    data = await state.get_data()
-    wallet_name = data.get("wallet_name")
+    if message.text in ["Bekor qilish", "🚫 Bekor qilish", "◀️ Orqaga"]:
+        await state.clear()
+        is_admin = settings.is_admin(db_user.id)
+        menu_kb = await get_main_menu(session, is_admin=is_admin)
+        await message.answer("Bosh menyudasiz.", reply_markup=menu_kb)
+        return
 
-    await state.update_data(wallet_number=wallet_number)
-    await state.set_state(UserStates.waiting_for_amount)
+    pubg_id = message.text.strip()
+    if not pubg_id.isdigit() or len(pubg_id) < 5 or len(pubg_id) > 20:
+        await message.answer("⚠️ Iltimos, to'g'ri PUBG ID raqamini kiriting (faqat raqamlar):")
+        return
 
-    solve_money_text = await TextService.get_text(
-        session=session,
-        key="solveMoney",
-        first=db_user.first_name,
-        last=db_user.last_name,
-        user_id=db_user.id
+    await crud.update_user_pubg_id(session, db_user.id, pubg_id)
+    await state.update_data(pubg_id=pubg_id)
+    await prompt_for_amount(message, session, state, db_user, is_edit=False)
+
+
+async def prompt_for_amount(
+    target_msg: Message,
+    session: AsyncSession,
+    state: FSMContext,
+    db_user: User,
+    is_edit: bool = False
+):
+    all_settings = await crud.get_all_settings(session)
+    narx = all_settings.get("narx", "60")
+    currency = all_settings.get("valyuta", "UC")
+
+    text = (
+        f"💸 <b>Qancha miqdorda UC yechib olmoqchisiz?</b>\n\n"
+        f"• <b>Mavjud balans:</b> {db_user.balance} {currency}\n"
+        f"• <b>Minimal yechish:</b> {narx} {currency}\n\n"
+        f"<i>Yechmoqchi bo'lgan miqdorni kiriting yoki pastdagi tugmani bosing:</i>"
     )
-    back_btn = await TextService.get_button(session, "back")
+    back_btn = "◀️ Orqaga"
     amount_kb = get_amount_keyboard(balance=db_user.balance, back_text=back_btn)
-    await message.answer(text=solve_money_text, reply_markup=amount_kb)
+
+    if is_edit:
+        await target_msg.delete()
+        await target_msg.answer(text=text, reply_markup=amount_kb)
+    else:
+        await target_msg.answer(text=text, reply_markup=amount_kb)
+
+    await state.set_state(UserStates.withdraw_waiting_for_amount)
 
 
-@withdraw_router.message(UserStates.waiting_for_amount)
-async def on_amount_entered(
+@withdraw_router.message(UserStates.withdraw_waiting_for_amount)
+async def process_withdraw_amount(
     message: Message,
     session: AsyncSession,
     state: FSMContext,
     bot: Bot,
     db_user: User
 ):
+    if message.text in ["◀️ Orqaga", "Orqaga", "Bekor qilish", "🚫 Bekor qilish"]:
+        await state.clear()
+        is_admin = settings.is_admin(db_user.id)
+        menu_kb = await get_main_menu(session, is_admin=is_admin)
+        await message.answer("Bosh menyudasiz.", reply_markup=menu_kb)
+        return
+
     val_text = message.text.strip().replace(",", ".")
     try:
         amount = float(val_text)
@@ -172,39 +200,26 @@ async def on_amount_entered(
         return
 
     all_settings = await crud.get_all_settings(session)
-    narx = float(all_settings.get("narx", "210"))
-    currency = all_settings.get("valyuta", "uc")
+    narx = float(all_settings.get("narx", "60"))
+    currency = all_settings.get("valyuta", "UC")
 
-    # Minimal miqdor tekshiruvi
     if amount < narx:
-        solve_min_text = await TextService.get_text(
-            session=session,
-            key="solveMinimum",
-            minimum=narx,
-            currency=currency
-        )
-        await message.answer(text=solve_min_text)
+        await message.answer(f"⚠️ Minimal yechib olish miqdori: <b>{narx} {currency}</b>\nQayta kiriting:")
         return
 
-    # Balans yetarliligi tekshiruvi
     if amount > float(db_user.balance):
-        low_bal_text = await TextService.get_text(session, "lowBalance")
-        await message.answer(text=low_bal_text)
+        await message.answer(f"⚠️ Balansingizda yetarli mablag' mavjud emas! (Balans: {db_user.balance} {currency})\nQayta kiriting:")
         return
 
     data = await state.get_data()
-    wallet_name = data.get("wallet_name")
-    wallet_number = data.get("wallet_number")
+    pubg_id = data.get("pubg_id", db_user.pubg_id or "Kiritilmagan")
 
-    accepted_text = await TextService.get_text(
-        session=session,
-        key="accpeted",
-        first=message.from_user.first_name,
-        last=message.from_user.last_name,
-        user_id=db_user.id,
-        wallet=wallet_name,
-        amount=amount,
-        phone=wallet_number
+    accepted_text = (
+        f"✅ <b>Arizangiz tayyor!</b>\n\n"
+        f"• <b>Operatsiya:</b> UC yechib olish\n"
+        f"• <b>PUBG ID:</b> <code>{pubg_id}</code>\n"
+        f"• <b>Yechilayotgan miqdor:</b> <b>{amount} {currency}</b>\n\n"
+        f"<i>Ma'lumotlar to'g'riligini tasdiqlaysizmi?</i>"
     )
 
     confirm_btn = await TextService.get_button(session, "confirm")
@@ -212,8 +227,8 @@ async def on_amount_entered(
     markup = get_withdrawal_confirm_keyboard(
         confirm_text=confirm_btn,
         cancel_text=cancel_btn,
-        wallet=wallet_name,
-        number=wallet_number,
+        wallet="PUBG Mobile",
+        number=pubg_id,
         amount=amount
     )
 
@@ -228,10 +243,9 @@ async def on_withdrawal_cancel(
     db_user: User
 ):
     await callback.message.delete()
-    canceled_text = await TextService.get_text(session, "canceled")
     is_admin = settings.is_admin(db_user.id)
     menu_kb = await get_main_menu(session, is_admin=is_admin)
-    await callback.message.answer(text=canceled_text, reply_markup=menu_kb)
+    await callback.message.answer(text="⛔ <b>Operatsiya bekor qilindi.</b>", reply_markup=menu_kb)
 
 
 @withdraw_router.callback_query(F.data.startswith("tasdiq-"))
@@ -247,46 +261,55 @@ async def on_withdrawal_confirmed(
         return
 
     wallet_name = parts[1]
-    wallet_number = parts[2]
+    pubg_id = parts[2]
     amount = float(parts[3])
 
-    # Balansni qayta tekshiramiz
     user = await crud.get_user(session, db_user.id)
     if not user or float(user.balance) < amount:
         await callback.answer("Hisobingizda yetarli mablag' mavjud emas!", show_alert=True)
         return
 
-    # Arizani bazaga saqlaymiz va balansni yechamiz
     withdrawal = await crud.create_withdrawal(
         session=session,
         user_id=db_user.id,
         payment_system=wallet_name,
-        wallet_number=wallet_number,
-        amount=amount
+        wallet_number=pubg_id,
+        amount=amount,
+        pubg_id=pubg_id
     )
 
     await callback.message.delete()
-    accped_text = await TextService.get_text(session, "accped")
     is_admin = settings.is_admin(db_user.id)
     menu_kb = await get_main_menu(session, is_admin=is_admin)
-    await callback.message.answer(text=accped_text, reply_markup=menu_kb)
 
-    # Adminga xabar yuborish
+    await callback.message.answer(
+        "✅ <b>Arizangiz muvaffaqiyatli qabul qilindi!</b>\n\n"
+        f"• <b>Ariza raqami:</b> #{withdrawal.id}\n"
+        f"• <b>PUBG ID:</b> <code>{pubg_id}</code>\n"
+        f"• <b>Miqdor:</b> {amount} UC\n\n"
+        "Tez orada adminlarimiz UC ni hisobingizga yuklab berishadi.",
+        reply_markup=menu_kb
+    )
+
+    # Adminga yuborish
     admin_target = settings.ADMIN_ID or (settings.SUPER_ADMINS[0] if settings.SUPER_ADMINS else 0)
     if admin_target:
-        username_part = f"@{db_user.username}" if db_user.username else str(db_user.id)
+        username_part = f"@{db_user.username}" if db_user.username else f"<a href='tg://user?id={db_user.id}'>{db_user.first_name}</a>"
         admin_text = (
-            f"💸 <a href='https://t.me/{db_user.username or ''}'>{db_user.id}</a> <b>uc yechib olmoqchi!</b>\n\n"
-            f"• <b>To'lov turi:</b> {wallet_name}\n"
-            f"• <b>Uc miqdori:</b> {amount}\n"
-            f"• <b>Hamyon raqami:</b> {wallet_number}\n\n"
-            f"Foydalanuvchi ucini to'lab bermoqchi bo'lsangiz ✅ <b>To'landi</b> tugmasini bosing!"
+            f"💸 <b>Yangi UC yechib olish arizasi! [#{withdrawal.id}]</b>\n\n"
+            f"👤 <b>Foydalanuvchi:</b> {username_part}\n"
+            f"🆔 <b>Telegram ID:</b> <code>{db_user.id}</code>\n"
+            f"🎮 <b>PUBG ID:</b> <code>{pubg_id}</code>\n"
+            f"💎 <b>Yechiladigan UC:</b> {amount} UC\n"
+            f"💳 <b>Mavjud qoldiq balans:</b> {user.balance} UC\n\n"
+            f"To'lovni amalga oshirib, qaror qabul qiling:"
         )
         user_display = db_user.first_name or str(db_user.id)
         admin_markup = get_admin_withdrawal_request_keyboard(
+            withdrawal_id=withdrawal.id,
             user_id=db_user.id,
             user_display=user_display,
-            number=wallet_number,
+            number=pubg_id,
             amount=amount
         )
         try:

@@ -6,15 +6,13 @@ from bot.services.text_manager import TextService
 async def get_main_menu(session: AsyncSession, is_admin: bool = False) -> ReplyKeyboardMarkup:
     earn = await TextService.get_button(session, "earn")
     cabinet = await TextService.get_button(session, "cabinet")
-    solve = await TextService.get_button(session, "solve")
-    tolov = await TextService.get_button(session, "tolov")
+    buy_withdraw = await TextService.get_button(session, "buy_withdraw")
     support = await TextService.get_button(session, "support")
     manual = await TextService.get_button(session, "manual")
 
     keyboard = [
         [KeyboardButton(text=earn)],
-        [KeyboardButton(text=cabinet), KeyboardButton(text=solve)],
-        [KeyboardButton(text=tolov)],
+        [KeyboardButton(text=cabinet), KeyboardButton(text=buy_withdraw)],
         [KeyboardButton(text=support), KeyboardButton(text=manual)],
     ]
     if is_admin:
@@ -26,9 +24,9 @@ async def get_main_menu(session: AsyncSession, is_admin: bool = False) -> ReplyK
 async def get_admin_panel_menu(session: AsyncSession) -> ReplyKeyboardMarkup:
     back = await TextService.get_button(session, "back")
     keyboard = [
-        [KeyboardButton(text="📊 Statistika"), KeyboardButton(text="💳 To'lov tizimi")],
+        [KeyboardButton(text="📊 Statistika"), KeyboardButton(text="💎 UC Tariflari")],
         [KeyboardButton(text="📢 Kanallar"), KeyboardButton(text="✉️ Xabar yuborish")],
-        [KeyboardButton(text="🔎 Foydalanuvchini boshqarish"), KeyboardButton(text="🎨 Dizayn")],
+        [KeyboardButton(text="🔎 Foydalanuvchini boshqarish"), KeyboardButton(text="💳 To'lov tizimi")],
         [KeyboardButton(text="⚙️ Asosiy sozlamalar"), KeyboardButton(text=back)],
     ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)

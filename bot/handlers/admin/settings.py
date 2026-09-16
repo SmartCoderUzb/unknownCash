@@ -158,6 +158,43 @@ async def process_admin_user(message: Message, session: AsyncSession, state: FSM
     await message.answer(f"<b>Muvaffaqiyatli o'zgartirildi!</b>\n\n<b>{bot_info.first_name} | Admin Panel 🔽 Kerakli buyruqni tanlang:</b>", reply_markup=panel_kb)
 
 
+@settings_router.callback_query(F.data == "card_details_setting")
+async def on_change_card_details(callback: CallbackQuery, session: AsyncSession, state: FSMContext):
+    await callback.message.delete()
+    current_card = await crud.get_setting(
+        session,
+        "card_details",
+        "Karta raqami: 8600 0000 0000 0000\nQabul qiluvchi: Admin"
+    )
+    text = (
+        f"💳 <b>Hozirgi to'lov rekvizitlari:</b>\n\n"
+        f"{current_card}\n\n"
+        f"<i>Yangi to'lov rekvizitlarini (karta raqami, ism, izoh) yuboring:</i>"
+    )
+    await callback.message.answer(text, reply_markup=get_cancel_keyboard())
+    await state.set_state(AdminStates.waiting_for_card_details)
+
+
+@settings_router.message(AdminStates.waiting_for_card_details)
+async def process_card_details(message: Message, session: AsyncSession, state: FSMContext, bot: Bot):
+    if message.text in ["🗄 Boshqarish", "Bekor qilish", "bekor qilish", "🚫 Bekor qilish"]:
+        await state.clear()
+        panel_kb = await get_admin_panel_menu(session)
+        bot_info = await bot.get_me()
+        await message.answer(f"<b>{bot_info.first_name} | Admin Panel 🔽 Kerakli buyruqni tanlang:</b>", reply_markup=panel_kb)
+        return
+
+    new_val = message.text or message.html_text or ""
+    await crud.set_setting(session, "card_details", new_val)
+    await state.clear()
+    panel_kb = await get_admin_panel_menu(session)
+    bot_info = await bot.get_me()
+    await message.answer(
+        f"✅ <b>To'lov rekvizitlari muvaffaqiyatli saqlandi!</b>\n\n<b>{bot_info.first_name} | Admin Panel 🔽 Kerakli buyruqni tanlang:</b>",
+        reply_markup=panel_kb
+    )
+
+
 @settings_router.callback_query(F.data.in_(["taklif_rasm", "rasm_ornatish"]))
 async def on_earn_photo_setting(callback: CallbackQuery, session: AsyncSession, state: FSMContext):
     await callback.message.delete()

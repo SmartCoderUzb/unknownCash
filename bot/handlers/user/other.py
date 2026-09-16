@@ -11,7 +11,7 @@ from bot.handlers.user.start import check_user_access
 other_router = Router()
 
 
-@other_router.message(F.text.in_(["🧾 To'lovlar kanali", "To'lovlar kanali"]))
+@other_router.message(F.text.in_(["🧾 Isbot kanal", "Isbot kanal", "🧾 To'lovlar kanali", "To'lovlar kanali"]))
 async def on_payments_channel(
     message: Message,
     session: AsyncSession,
@@ -27,7 +27,7 @@ async def on_payments_channel(
     vazifa = all_settings.get("vazifa", "Kiritilmagan")
 
     if not vazifa or vazifa == "Kiritilmagan":
-        await message.answer("<b>To'lovlar kanali kiritilmagan!</b>")
+        await message.answer("<b>Isbot va to'lovlar kanali hali biriktirilmagan!</b>")
         return
 
     clean_chan = vazifa.lstrip("@")
@@ -38,16 +38,15 @@ async def on_payments_channel(
         last=message.from_user.last_name,
         user_id=db_user.id
     )
-    btn_text = await TextService.get_button(session, "tolov")
     markup = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text=btn_text, url=f"https://t.me/{clean_chan}")]
+            [InlineKeyboardButton(text="🧾 Isbot kanalga o'tish", url=f"https://t.me/{clean_chan}")]
         ]
     )
     await message.answer(text=tolov_text, reply_markup=markup, disable_web_page_preview=True)
 
 
-@other_router.message(F.text.in_(["📚 Qo'llanma", "Qo'llanma"]))
+@other_router.message(F.text.in_(["ℹ️ Qo'llanma", "Qo'llanma", "📚 Qo'llanma", "Yordam / Qo'llanma"]))
 async def on_manual_command(
     message: Message,
     session: AsyncSession,
