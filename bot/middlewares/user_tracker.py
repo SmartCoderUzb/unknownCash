@@ -40,6 +40,10 @@ class UserTrackerMiddleware(BaseMiddleware):
 
         # 2. Ban tekshiruvi: agar bloklangan bo'lsa va admin bo'lmasa, jarayon to'xtatiladi
         is_admin = settings.is_admin(event_user.id)
+        if not is_admin:
+            db_admins = await crud.get_admins(session)
+            is_admin = event_user.id in db_admins
+        data["is_admin"] = is_admin
         if user.is_banned and not is_admin:
             if isinstance(event, CallbackQuery):
                 await event.answer("Siz botdan bloklangansiz!", show_alert=True)

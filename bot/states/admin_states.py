@@ -24,3 +24,7 @@ class AdminStates(StatesGroup):
     waiting_for_direct_user_id = State()
     waiting_for_direct_message = State()
     waiting_for_earn_photo = State()
+
+
+class AdminManageAdmin(StatesGroup):
+    waiting_for_user_id = State()

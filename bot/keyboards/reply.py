@@ -27,7 +27,8 @@ async def get_admin_panel_menu(session: AsyncSession) -> ReplyKeyboardMarkup:
         [KeyboardButton(text="📊 Statistika"), KeyboardButton(text="💎 UC Tariflari")],
         [KeyboardButton(text="📢 Kanallar"), KeyboardButton(text="✉️ Xabar yuborish")],
         [KeyboardButton(text="🔎 Foydalanuvchini boshqarish"), KeyboardButton(text="💳 To'lov tizimi")],
-        [KeyboardButton(text="⚙️ Asosiy sozlamalar"), KeyboardButton(text=back)],
+        [KeyboardButton(text="⚙️ Asosiy sozlamalar"), KeyboardButton(text="👮 Adminlar")],
+        [KeyboardButton(text=back)],
     ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 

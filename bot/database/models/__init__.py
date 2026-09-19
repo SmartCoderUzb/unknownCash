@@ -1,3 +1,4 @@
+from bot.database.models.admin import Admin
 from .user import User
 from .setting import BotSetting
 from .channel import MandatoryChannel
@@ -8,6 +9,7 @@ from .tariff import UcTariff
 from .order import UcOrder
 
 __all__ = [
+    "Admin",
     "User",
     "BotSetting",
     "MandatoryChannel",

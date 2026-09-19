@@ -67,3 +67,127 @@ async def on_statistics_command(
         f"💡 <b>Server yuklanishi (Load Avg):</b> <code>{load}</code>"
     )
     await message.answer(text=stat_text, reply_markup=get_close_keyboard())
+
+# ================= ADMINLARNI BOSHQARISH (KINO BOT ANDOZASI) =================
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from bot.states.admin_states import AdminManageAdmin
+
+
+def _get_admins_list_kb(db_admins: list[int], config_admins: list[int]) -> InlineKeyboardMarkup:
+    buttons = [
+        [InlineKeyboardButton(text="➕ Yangi admin qo'shish", callback_data="admin:add_new")]
+    ]
+    for adm_id in db_admins:
+        if adm_id not in config_admins:
+            buttons.append([InlineKeyboardButton(text=f"🗑 {adm_id}ni o'chirish", callback_data=f"admin:remove:{adm_id}")])
+    buttons.append([InlineKeyboardButton(text="◀️ Orqaga", callback_data="yopish")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+@panel_router.message(F.text == "👮 Adminlar")
+@panel_router.callback_query(F.data == "admin:admins")
+async def cb_admin_admins(event: Message | CallbackQuery, session: AsyncSession, state: FSMContext = None):
+    user_id = event.from_user.id
+    is_adm = settings.is_admin(user_id)
+    if not is_adm:
+        db_adms = await crud.get_admins(session)
+        is_adm = user_id in db_adms
+    if not is_adm:
+        if isinstance(event, CallbackQuery):
+            await event.answer("❌ Ruxsat berilmagan!", show_alert=True)
+        return
+
+    if state:
+        await state.clear()
+
+    db_admins = await crud.get_admins(session)
+    config_admins = settings.ADMINS or ([settings.ADMIN_ID] if settings.ADMIN_ID else [])
+    all_admin_ids = list(set(config_admins + db_admins))
+
+    lines = ["👮‍♂️ <b>Bot Adminlari ro'yxati:</b>", ""]
+    for a_id in all_admin_ids:
+        role_label = " (Bosh admin)" if a_id in config_admins else ""
+        lines.append(f"• <code>{a_id}</code>{role_label}")
+    text = "\n".join(lines)
+
+    kb = _get_admins_list_kb(db_admins, config_admins)
+    if isinstance(event, CallbackQuery):
+        try:
+            await event.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+        except Exception:
+            await event.message.answer(text, reply_markup=kb, parse_mode="HTML")
+        await event.answer()
+    else:
+        await event.answer(text, reply_markup=kb, parse_mode="HTML")
+
+
+@panel_router.callback_query(F.data == "admin:add_new")
+async def cb_add_admin_start(call: CallbackQuery, state: FSMContext, session: AsyncSession):
+    user_id = call.from_user.id
+    is_adm = settings.is_admin(user_id) or (user_id in await crud.get_admins(session))
+    if not is_adm:
+        return await call.answer("❌ Ruxsat berilmagan!", show_alert=True)
+
+    await state.set_state(AdminManageAdmin.waiting_for_user_id)
+    cancel_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Orqaga", callback_data="admin:admins")]
+    ])
+    try:
+        await call.message.edit_text(
+            "👮‍♂️ Yangi adminning <b>Telegram ID</b>sini kiriting:",
+            reply_markup=cancel_kb,
+            parse_mode="HTML"
+        )
+    except Exception:
+        await call.message.answer(
+            "👮‍♂️ Yangi adminning <b>Telegram ID</b>sini kiriting:",
+            reply_markup=cancel_kb,
+            parse_mode="HTML"
+        )
+    await call.answer()
+
+
+@panel_router.message(AdminManageAdmin.waiting_for_user_id)
+async def process_add_admin(message: Message, state: FSMContext, session: AsyncSession):
+    user_id = message.from_user.id
+    is_adm = settings.is_admin(user_id) or (user_id in await crud.get_admins(session))
+    if not is_adm:
+        await state.clear()
+        return
+
+    text = message.text.strip() if message.text else ""
+    cancel_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Orqaga", callback_data="admin:admins")]
+    ])
+
+    if not text.isdigit():
+        return await message.answer(
+            "❌ Faqat sonlardan iborat Telegram ID kiriting:",
+            reply_markup=cancel_kb,
+            parse_mode="HTML"
+        )
+
+    new_admin_id = int(text)
+    await crud.add_admin(session, new_admin_id)
+    await state.clear()
+
+    back_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Adminlar ro'yxatiga qaytish", callback_data="admin:admins")]
+    ])
+    await message.answer(
+        f"✅ <code>{new_admin_id}</code> IDli foydalanuvchi muvaffaqiyatli admin etib tayinlandi!",
+        reply_markup=back_kb,
+        parse_mode="HTML"
+    )
+
+
+@panel_router.callback_query(F.data.startswith("admin:remove:"))
+async def cb_remove_admin(call: CallbackQuery, session: AsyncSession):
+    user_id = call.from_user.id
+    if not settings.is_admin(user_id):
+        return await call.answer("⚠️ Faqat asosiy admin boshqa adminlarni o'chira oladi!", show_alert=True)
+
+    rem_id = int(call.data.split(":")[-1])
+    await crud.remove_admin(session, rem_id)
+    await call.answer(f"🗑 {rem_id} adminlikdan olib tashlandi!", show_alert=True)
+    await cb_admin_admins(call, session)

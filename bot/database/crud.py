@@ -501,3 +501,40 @@ async def get_all_texts(session: AsyncSession, text_type: str | None = None) -> 
         query = query.where(BotText.type == text_type)
     res = await session.execute(query)
     return {row.key: row.value for row in res.scalars().all()}
+
+
+# ================= ADMINS CRUD =================
+async def get_admins(session: AsyncSession) -> list[int]:
+    from bot.database.models.admin import Admin
+    result = await session.execute(select(Admin.user_id))
+    return [row[0] for row in result.all()]
+
+
+async def add_admin(session: AsyncSession, user_id: int, role: str = "admin") -> bool:
+    from bot.database.models.admin import Admin
+    try:
+        stmt = select(Admin).where(Admin.user_id == user_id)
+        res = await session.execute(stmt)
+        existing = res.scalar_one_or_none()
+        if existing:
+            existing.role = role
+        else:
+            session.add(Admin(user_id=user_id, role=role))
+        await session.commit()
+        return True
+    except Exception:
+        await session.rollback()
+        return False
+
+
+async def remove_admin(session: AsyncSession, user_id: int) -> bool:
+    from bot.database.models.admin import Admin
+    from sqlalchemy import delete
+    try:
+        stmt = delete(Admin).where(Admin.user_id == user_id)
+        res = await session.execute(stmt)
+        await session.commit()
+        return res.rowcount > 0
+    except Exception:
+        await session.rollback()
+        return False
