@@ -68,27 +68,60 @@ async def on_statistics_command(
     )
     await message.answer(text=stat_text, reply_markup=get_close_keyboard())
 
+
 # ================= ADMINLARNI BOSHQARISH (KINO BOT ANDOZASI) =================
+
+from aiogram.filters import StateFilter
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from bot.states.admin_states import AdminManageAdmin
 
+def _get_config_admins(cfg) -> list[int]:
+    result = set()
+    for attr in ["all_admin_ids", "admin_list", "get_all_admin_ids", "SUPER_ADMINS", "ADMINS", "ADMIN_ID", "admin_id"]:
+        if hasattr(cfg, attr):
+            try:
+                val = getattr(cfg, attr)
+                if callable(val):
+                    val = val()
+                if isinstance(val, (list, set, tuple)):
+                    for x in val:
+                        if str(x).isdigit() and int(x) > 0:
+                            result.add(int(x))
+                elif isinstance(val, int) and val > 0:
+                    result.add(val)
+                elif isinstance(val, str):
+                    for part in val.replace(";", ",").split(","):
+                        if part.strip().isdigit() and int(part.strip()) > 0:
+                            result.add(int(part.strip()))
+            except Exception:
+                pass
+    return sorted(list(result))
 
-def _get_admins_list_kb(db_admins: list[int], config_admins: list[int]) -> InlineKeyboardMarkup:
+def _is_config_admin(cfg, user_id: int) -> bool:
+    if hasattr(cfg, "is_admin"):
+        try:
+            if cfg.is_admin(user_id):
+                return True
+        except Exception:
+            pass
+    return user_id in _get_config_admins(cfg)
+
+def _get_admins_list_kb(db_admins: list[int], config_admins: list[int], back_callback: str = "adm_close") -> InlineKeyboardMarkup:
     buttons = [
         [InlineKeyboardButton(text="➕ Yangi admin qo'shish", callback_data="admin:add_new")]
     ]
     for adm_id in db_admins:
         if adm_id not in config_admins:
             buttons.append([InlineKeyboardButton(text=f"🗑 {adm_id}ni o'chirish", callback_data=f"admin:remove:{adm_id}")])
-    buttons.append([InlineKeyboardButton(text="◀️ Orqaga", callback_data="yopish")])
+    buttons.append([InlineKeyboardButton(text="◀️ Orqaga", callback_data=back_callback)])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
+from bot.states.admin_states import AdminManageAdmin
 
-@panel_router.message(F.text == "👮 Adminlar")
+@panel_router.message(StateFilter("*"), F.text.in_(["👮 Adminlar", "👮‍♂️ Adminlar", "Adminlar", "adminlar"]))
 @panel_router.callback_query(F.data == "admin:admins")
 async def cb_admin_admins(event: Message | CallbackQuery, session: AsyncSession, state: FSMContext = None):
     user_id = event.from_user.id
-    is_adm = settings.is_admin(user_id)
+    is_adm = _is_config_admin(settings, user_id)
     if not is_adm:
         db_adms = await crud.get_admins(session)
         is_adm = user_id in db_adms
@@ -101,7 +134,7 @@ async def cb_admin_admins(event: Message | CallbackQuery, session: AsyncSession,
         await state.clear()
 
     db_admins = await crud.get_admins(session)
-    config_admins = settings.ADMINS or ([settings.ADMIN_ID] if settings.ADMIN_ID else [])
+    config_admins = _get_config_admins(settings)
     all_admin_ids = list(set(config_admins + db_admins))
 
     lines = ["👮‍♂️ <b>Bot Adminlari ro'yxati:</b>", ""]
@@ -110,7 +143,7 @@ async def cb_admin_admins(event: Message | CallbackQuery, session: AsyncSession,
         lines.append(f"• <code>{a_id}</code>{role_label}")
     text = "\n".join(lines)
 
-    kb = _get_admins_list_kb(db_admins, config_admins)
+    kb = _get_admins_list_kb(db_admins, config_admins, back_callback="yopish")
     if isinstance(event, CallbackQuery):
         try:
             await event.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
@@ -124,7 +157,7 @@ async def cb_admin_admins(event: Message | CallbackQuery, session: AsyncSession,
 @panel_router.callback_query(F.data == "admin:add_new")
 async def cb_add_admin_start(call: CallbackQuery, state: FSMContext, session: AsyncSession):
     user_id = call.from_user.id
-    is_adm = settings.is_admin(user_id) or (user_id in await crud.get_admins(session))
+    is_adm = _is_config_admin(settings, user_id) or (user_id in await crud.get_admins(session))
     if not is_adm:
         return await call.answer("❌ Ruxsat berilmagan!", show_alert=True)
 
@@ -150,7 +183,7 @@ async def cb_add_admin_start(call: CallbackQuery, state: FSMContext, session: As
 @panel_router.message(AdminManageAdmin.waiting_for_user_id)
 async def process_add_admin(message: Message, state: FSMContext, session: AsyncSession):
     user_id = message.from_user.id
-    is_adm = settings.is_admin(user_id) or (user_id in await crud.get_admins(session))
+    is_adm = _is_config_admin(settings, user_id) or (user_id in await crud.get_admins(session))
     if not is_adm:
         await state.clear()
         return
@@ -184,7 +217,7 @@ async def process_add_admin(message: Message, state: FSMContext, session: AsyncS
 @panel_router.callback_query(F.data.startswith("admin:remove:"))
 async def cb_remove_admin(call: CallbackQuery, session: AsyncSession):
     user_id = call.from_user.id
-    if not settings.is_admin(user_id):
+    if not _is_config_admin(settings, user_id):
         return await call.answer("⚠️ Faqat asosiy admin boshqa adminlarni o'chira oladi!", show_alert=True)
 
     rem_id = int(call.data.split(":")[-1])
